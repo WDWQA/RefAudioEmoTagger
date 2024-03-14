@@ -63,5 +63,3 @@ def process_audio_files(folder_path, output_file, model_path, model_revision, de
 
     logging.info(f"Processed {len(audio_paths)} files in {folder_path}, "
                  f"total time: {time.time() - start_time:.2f} seconds")
-
-process_audio_files(folder_path, output_file, model_path, model_revision, device, batch_size, max_workers)
