@@ -1,41 +1,43 @@
 import os
 import csv
 import shutil
-from pydub import AudioSegment
+import logging
+import argparse
+from concurrent.futures import ThreadPoolExecutor
 
-def classify_audio_emotion(log_file, dataset_path):
-    character_emotions = {}
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def process_audio_file(audio_file, character, emotion, dataset_path):
+    src_path = os.path.join(dataset_path, audio_file)
+    character_folder = os.path.join(dataset_path, character)
+    emotion_folder = os.path.join(character_folder, emotion)
+    os.makedirs(emotion_folder, exist_ok=True)
+
+    audio_name = os.path.basename(audio_file)
+    new_audio_name = f"【{emotion}】{audio_name}"
+    dst_path = os.path.join(emotion_folder, new_audio_name)
+
+    if os.path.exists(src_path):
+        shutil.move(src_path, dst_path)
+        logging.info(f"Moved {audio_file} to {dst_path}")
+    else:
+        logging.warning(f"File not found: {src_path}")
+
+def classify_audio_emotion(log_file, dataset_path, max_workers=4):
     with open(log_file, 'r', encoding='utf-8') as file:
-        next(csv.reader(file, delimiter='|'))  # 跳过标题行
-        for audio_path, character, emotion in csv.reader(file, delimiter='|'):
-            character_emotions.setdefault(character, {}).setdefault(emotion, []).append(audio_path)
+        reader = csv.reader(file, delimiter='|')
+        next(reader)  # 跳过标题行
+        audio_data = [(audio_path, character, emotion) for audio_path, character, emotion, _ in reader]
 
-    for character, emotions in character_emotions.items():
-        character_folder = os.path.join(dataset_path, character)
-        os.makedirs(character_folder, exist_ok=True)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        executor.map(lambda data: process_audio_file(*data, dataset_path), audio_data)
 
-        for emotion, audio_files in emotions.items():
-            emotion_folder = os.path.join(character_folder, emotion)
-            os.makedirs(emotion_folder, exist_ok=True)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Classify audio files by emotion')
+    parser.add_argument('--log_file', type=str, required=True, help='Path to the log file')
+    parser.add_argument('--dataset_path', type=str, required=True, help='Path to the dataset directory')
+    parser.add_argument('--max_workers', type=int, default=4, help='Maximum number of worker threads')
 
-            for audio_file in audio_files:
-                src_path = os.path.join(dataset_path, audio_file)
-                audio_name = os.path.basename(audio_file)
-                new_audio_name = f"【{emotion}】{audio_name}"
-                dst_path = os.path.join(emotion_folder, new_audio_name)
+    args = parser.parse_args()
 
-                if os.path.exists(src_path):
-                    duration = AudioSegment.from_wav(src_path).duration_seconds
-                    if 3 <= duration <= 10:
-                        shutil.move(src_path, dst_path)
-                        print(f"Moved {audio_file} to {dst_path}")
-                    else:
-                        os.remove(src_path)
-                        print(f"Deleted {audio_file} (duration: {duration:.2f}s)")
-                else:
-                    print(f"File not found: {src_path}")
-
-log_file = r''
-dataset_path = r''
-classify_audio_emotion(log_file, dataset_path)
+    classify_audio_emotion(args.log_file, args.dataset_path, args.max_workers)
