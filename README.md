@@ -5,6 +5,6 @@
 此项目包含一个批量推理脚本`recognize.py`，和一个音频分类脚本`classify.py`
 
 ## 部署
-安装环境
+安装依赖
 
-`pip install funasr modelscope torchaudio`
+`pip install modelscope torchaudio pydub`
