@@ -39,7 +39,27 @@ def filter_audio(src_folder, dst_folder=None, min_duration=3, max_duration=10, d
                     logging.warning(f"已跳过 {src_path} (时长: {duration:.2f}秒)")
 
 def rename_wav_with_txt(directory):
-    # ... (保持不变)
+    for root, _, files in os.walk(directory):
+        for filename in files:
+            if filename.endswith('.lab'):
+                basename = os.path.splitext(filename)[0]
+                wav_path = os.path.join(root, f"{basename}.wav")
+                txt_path = os.path.join(root, filename)
+                
+                if os.path.exists(wav_path):
+                    with open(txt_path, 'r', encoding='utf-8') as txt_file:
+                        new_name = txt_file.read().strip()
+                        
+                        if os.path.isfile(new_name) or os.path.isdir(new_name) or not os.path.basename(new_name):
+                            print(f"跳过无效的文件名: {new_name}")
+                        else:
+                            try:
+                                os.rename(wav_path, os.path.join(root, f"{new_name}.wav"))
+                                print(f"已重命名 {wav_path} 为 {new_name}.wav")
+                            except OSError as e:
+                                print(f"重命名 {wav_path} 时出错: {e}")
+                else:
+                    print(f"找不到与 {filename} 对应的WAV文件")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='筛选并重命名音频文件')
