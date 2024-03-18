@@ -25,7 +25,7 @@ class EmotionRecognitionPipeline:
         waveforms, sample_rates = zip(*map(torchaudio.load, audio_paths))
         resampled_waveforms = [self._resample_waveform(waveform, sample_rate) for waveform, sample_rate in zip(waveforms, sample_rates)]
         return self.pipeline(resampled_waveforms, sample_rate=self.target_sample_rate, granularity="utterance", extract_embedding=False)
-
+    
     def _resample_waveform(self, waveform, sample_rate):
         if sample_rate != self.target_sample_rate:
             resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=self.target_sample_rate)
@@ -38,7 +38,9 @@ def get_top_emotion_with_confidence(recognition_results):
 def process_batch_and_write_results(batch_audio_paths, recognizer, output_file):
     top_emotions_with_confidence = get_top_emotion_with_confidence(recognizer.batch_infer(batch_audio_paths))
     with open(output_file, 'a', encoding='utf-8') as f:
-        f.writelines(f"{audio_path}|{os.path.basename(os.path.dirname(audio_path))}|{top_emotion}|{confidence:.2f}\n" for audio_path, (top_emotion, confidence) in zip(batch_audio_paths, top_emotions_with_confidence))
+        for audio_path, (top_emotion, confidence) in zip(batch_audio_paths, top_emotions_with_confidence):
+            parent_folder = os.path.basename(os.path.dirname(audio_path))
+            f.write(f"{audio_path}|{parent_folder}|{top_emotion}|{confidence:.2f}\n")
     logging.info(f"Processed {len(batch_audio_paths)} files")
 
 def process_audio_files(folder_path, output_file, recognizer, batch_size=10, max_workers=4):
@@ -76,10 +78,10 @@ def process_text_emotion(audio_emotion_file, text_emotion_file, text_classifier)
         f_out.write(f"{header}|TextEmotion\n")
         for line in f_in:
             audio_path, *rest = line.strip().split('|')
-            text = os.path.splitext(os.path.basename(audio_path))[0]
-            text_emotion = text_classifier(input=text)[0]['label']
+            basename, _ = os.path.splitext(os.path.basename(audio_path))
+            text_emotion = text_classifier(input=basename)[0]['label']
             mapped_emotion = emotion_mapping.get(text_emotion, text_emotion)
-            f_out.write(f"{line.strip()}|{mapped_emotion}\n")
+            f_out.write(f"{line.strip()}|{mapped_emotion}\n") 
 
 def main(args):
     emotion_recognizer = EmotionRecognitionPipeline(model_revision=args.model_revision)
@@ -100,3 +102,4 @@ if __name__ == "__main__":
     parser.add_argument('--disable_text_emotion', action='store_true', help='是否禁用文本情感分类')
     args = parser.parse_args()
     main(args)
+
