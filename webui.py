@@ -57,7 +57,7 @@ def launch_ui():
     with gr.Blocks(theme=gr.themes.Default(
             primary_hue="blue",
             secondary_hue="blue",
-            neutral_hue="blue",
+            neutral_hue="blue", 
             text_size="md",
             spacing_size="md",
             radius_size="md",
@@ -68,7 +68,7 @@ def launch_ui():
 
         with gr.Tab("一键推理"):
             with gr.Row():
-                one_click_input_folder = gr.Textbox(label="输入文件夹", value="input")
+                one_click_input_folder = gr.Textbox(label="输入文件夹", value="input") 
                 one_click_min_duration = gr.Number(label="最小时长(秒)", value=3)
                 one_click_max_duration = gr.Number(label="最大时长(秒)", value=10)
             with gr.Row():
@@ -78,14 +78,14 @@ def launch_ui():
             one_click_disable_text_emotion = gr.Checkbox(label="禁用文本情感分类", value=False)
             one_click_disable_filter = gr.Checkbox(label="禁用参考音频筛选", value=False)
             one_click_button = gr.Button("一键推理")
-            one_click_result = gr.Textbox(label="推理结果")
+            one_click_result = gr.Textbox(label="推理结果") 
             one_click_button.click(run_end_to_end_pipeline, [one_click_input_folder, one_click_min_duration, one_click_max_duration, one_click_model_revision, one_click_batch_size, one_click_max_workers, one_click_disable_text_emotion, one_click_disable_filter], one_click_result)
-
+        
         with gr.Tab("音频预处理"):
             with gr.Row():
                 preprocess_input_folder = gr.Textbox(label="输入文件夹", value="input")
-                preprocess_output_folder = gr.Textbox(label="输出文件夹", value="referenceaudio")
-            with gr.Row():    
+                preprocess_output_folder = gr.Textbox(label="输出文件夹", value="referenceaudio")  
+            with gr.Row():
                 preprocess_min_duration = gr.Number(label="最小时长(秒)", value=3)
                 preprocess_max_duration = gr.Number(label="最大时长(秒)", value=10)
             preprocess_disable_filter = gr.Checkbox(label="禁用参考音频筛选", value=False)
@@ -94,11 +94,11 @@ def launch_ui():
             preprocess_button.click(preprocess_and_rename_audio, [preprocess_input_folder, preprocess_output_folder, preprocess_min_duration, preprocess_max_duration, preprocess_disable_filter], preprocess_result)
 
         with gr.Tab("音频情感识别"):
-            with gr.Row():
+            with gr.Row():  
                 recognize_folder = gr.Textbox(label="音频文件夹", value="referenceaudio")
                 model_revision = gr.Textbox(label="模型版本", value="v2.0.4")
-            with gr.Row():  
-                batch_size = gr.Slider(1, 100, 10, step=1, label="批量大小")
+            with gr.Row():
+                batch_size = gr.Slider(1, 100, 10, step=1, label="批量大小") 
                 recognize_max_workers = gr.Slider(1, 16, 4, step=1, label="最大工作线程数")
             disable_text_emotion = gr.Checkbox(label="禁用文本情感分类", value=False)
             output_file = gr.Textbox(label="输出文件路径", value="csv_opt/recognition_result.csv")
@@ -107,15 +107,15 @@ def launch_ui():
             recognize_button.click(recognize_audio_emotions, [recognize_folder, model_revision, batch_size, recognize_max_workers, disable_text_emotion, output_file], recognize_result)
 
         with gr.Tab("音频情感分类"):
-            with gr.Row():  
+            with gr.Row():
                 log_file = gr.Textbox(label="日志文件", value="csv_opt/recognition_result.csv")
                 classify_max_workers = gr.Slider(1, 16, 4, step=1, label="最大工作线程数")
             classify_output = gr.Textbox(label="输出文件夹", value="output")
             classify_button = gr.Button("开始分类")
-            classify_result = gr.Textbox(label="分类结果") 
+            classify_result = gr.Textbox(label="分类结果")
             classify_button.click(classify_audio_emotions, [log_file, classify_max_workers, classify_output], classify_result)
 
-    demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=9975, max_threads=100)
+    demo.launch(share=True, inbrowser=True, server_name="0.0.0.0", server_port=9975, max_threads=100)
 
 if __name__ == "__main__":
     launch_ui()
