@@ -11,8 +11,8 @@
 - modelscope
 - funasr
 - torchaudio
-- Gardio
-- 安装所需依赖`pip install pydub modelscope funasr torchaudio Gardio
+- Gradio
+- 安装所需依赖`pip install pydub modelscope funasr torchaudio Gradio
 
 ## 快速使用
 
