@@ -2,4 +2,4 @@ pydub
 modelscope
 funasr
 torchaudio
-gardio
+gradio
