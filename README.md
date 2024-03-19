@@ -14,7 +14,7 @@
 - Gardio
 - 安装所需依赖`pip install pydub modelscope funasr torchaudio Gardio
 
-#快速使用
+##快速使用
 
 ```
 input
