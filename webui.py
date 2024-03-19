@@ -35,8 +35,8 @@ def recognize_audio_emotions(audio_folder, model_revision, batch_size, max_worke
     recognize_main(recognize_args)
     return f"音频情感识别完成,结果保存在 {output_file} 文件中。"
 
-def classify_audio_emotions(log_file, audio_folder, max_workers, output_folder):
-    classify_audio_emotion(log_file, audio_folder, output_folder, max_workers)
+def classify_audio_emotions(log_file, max_workers, output_folder):
+    classify_audio_emotion(log_file, output_folder, max_workers)
     return f"音频情感分类完成,结果保存在 {output_folder} 文件夹中。"
 
 def run_end_to_end_pipeline(input_folder, min_duration, max_duration, model_revision, batch_size, max_workers, disable_text_emotion, disable_filter):
@@ -95,14 +95,11 @@ def launch_ui():
 
         with gr.Tab("音频情感分类"):  
             with gr.Row():
-                log_file = gr.Textbox(label="日志文件", value="csv_opt/recognition_result.csv")  
-                classify_folder = gr.Textbox(label="音频文件夹", value="referenceaudio")  
+                log_file = gr.Textbox(label="日志文件", value="csv_opt/recognition_result.csv")
             classify_output = gr.Textbox(label="输出文件夹", value="output") 
             classify_button = gr.Button("开始分类") 
             classify_result = gr.Textbox(label="分类结果")
-            classify_button.click(classify_audio_emotions, [log_file, classify_folder, max_workers, classify_output], classify_result)
-            
-        demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=9975, max_threads=100)
+            classify_button.click(classify_audio_emotions, [log_file, max_workers, classify_output], classify_result)
 
 if __name__ == "__main__":  
     launch_ui()
