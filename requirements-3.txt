@@ -1,0 +1,4 @@
+pydub
+modelscope
+funasr
+torchaudio

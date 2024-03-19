@@ -2,42 +2,72 @@ import os
 import csv
 import shutil
 import logging
-import argparse
-from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def process_audio_file(audio_file, character, emotion, dataset_path):
-    src_path = os.path.join(dataset_path, audio_file)
-    character_folder = os.path.join(dataset_path, character)
-    emotion_folder = os.path.join(character_folder, emotion)
-    os.makedirs(emotion_folder, exist_ok=True)
+def process_audio_file(audio_file, character, audio_emotion, text_emotion, output_path):
+    src_path = Path(audio_file)
+    
+    if not src_path.exists():
+        logging.warning(f"Source file does not exist: {src_path}")
+        return
+    
+    if audio_emotion != text_emotion and audio_emotion != '中立' and text_emotion:
+        logging.info(f"Skipping {src_path} due to emotion mismatch: AudioEmotion={audio_emotion}, TextEmotion={text_emotion}")
+        return
+    
+    emotion_folder = Path(output_path) / character / audio_emotion
+    emotion_folder.mkdir(parents=True, exist_ok=True)
 
-    audio_name = os.path.basename(audio_file)
-    new_audio_name = f"【{emotion}】{audio_name}"
-    dst_path = os.path.join(emotion_folder, new_audio_name)
+    audio_name = src_path.name
+    new_audio_name = f"【{audio_emotion}】{audio_name}"
+    dst_path = emotion_folder / new_audio_name
 
-    if os.path.exists(src_path):
-        shutil.move(src_path, dst_path)
-        logging.info(f"Moved {audio_file} to {dst_path}")
+    if not dst_path.exists():
+        try:
+            shutil.copy(str(src_path), str(dst_path))
+            logging.info(f"Copied {src_path} to {dst_path}")
+        except OSError as e:
+            logging.error(f"Error copying file: {e}")
     else:
-        logging.warning(f"File not found: {src_path}")
+        logging.warning(f"File already exists: {dst_path}")
 
-def classify_audio_emotion(log_file, dataset_path, max_workers=4):
-    with open(log_file, 'r', encoding='utf-8') as file:
-        reader = csv.reader(file, delimiter='|')
+def classify_audio_emotion(log_file, output_path, max_workers=4):
+    log_path = Path(log_file)
+    
+    if not log_path.exists():
+        logging.error(f"Log file does not exist: {log_path}")
+        return
+    
+    output_path = Path(output_path)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    with open(log_path, 'r', encoding='utf-8') as f_in:
+        reader = csv.reader(f_in, delimiter='|')
         next(reader)  # 跳过标题行
-        audio_data = [(audio_path, character, emotion) for audio_path, character, emotion, _ in reader]
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for row in reader:
+                audio_path, audio_emotion, _, character, text_emotion = row
+                future = executor.submit(process_audio_file, audio_path, character, audio_emotion, text_emotion, output_path)
+                futures.append(future)
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        executor.map(lambda data: process_audio_file(*data, dataset_path), audio_data)
+            for future in as_completed(futures):
+                exception = future.exception()
+                if exception:
+                    logging.error(f"Exception occurred: {exception}")
 
 if __name__ == "__main__":
+    import argparse
+
     parser = argparse.ArgumentParser(description='Classify audio files by emotion')
     parser.add_argument('--log_file', type=str, required=True, help='Path to the log file')
-    parser.add_argument('--dataset_path', type=str, required=True, help='Path to the dataset directory')
+    parser.add_argument('--output_path', type=str, required=True, help='Path to the output directory')
     parser.add_argument('--max_workers', type=int, default=4, help='Maximum number of worker threads')
 
     args = parser.parse_args()
 
-    classify_audio_emotion(args.log_file, args.dataset_path, args.max_workers)
+    classify_audio_emotion(args.log_file, args.output_path, args.max_workers)
