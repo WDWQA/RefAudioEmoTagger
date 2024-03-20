@@ -2,9 +2,15 @@ import os
 import argparse
 import logging
 import gradio as gr
+import sys
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
+
 from preprocess_audio import filter_audio, rename_wav_with_txt
 from recognize import main as recognize_main
 from classify import classify_audio_emotion
+import shutil
 
 # 配置logging模块来过滤掉特定的HTTP请求输出
 logging.getLogger("gradio").setLevel(logging.WARNING)
@@ -14,12 +20,15 @@ def create_folders(folders):
         os.makedirs(folder, exist_ok=True)
 
 def preprocess_and_rename_audio(input_folder, output_folder, min_duration, max_duration, disable_filter):
+    src_items = len(os.listdir(input_folder))
+    copy_parent_folder = src_items > 5
+
     if disable_filter:
         filter_result = "跳过音频过滤步骤。"
         audio_folder = input_folder
     else:
-        filtered_files = filter_audio(input_folder, output_folder, min_duration, max_duration)
-        filter_result = f"音频过滤完成,过滤出 {filtered_files} 个文件,结果保存在 {output_folder} 文件夹中。"
+        filter_audio(input_folder, output_folder, min_duration, max_duration, copy_parent_folder=copy_parent_folder)
+        filter_result = f"音频过滤完成,结果保存在 {output_folder} 文件夹中。"
         audio_folder = output_folder
 
     renamed_files = rename_wav_with_txt(audio_folder)
@@ -51,17 +60,24 @@ def run_end_to_end_pipeline(input_folder, min_duration, max_duration, model_revi
     classify_result = classify_audio_emotions(output_file, max_workers, output_folder)
     return f"{preprocess_result}\n{recognize_result}\n{classify_result}"
 
+def reset_folders():
+    folders = ["csv_opt", "output", "referenceaudio"]
+    for folder in folders:
+        shutil.rmtree(folder, ignore_errors=True)
+        os.makedirs(folder)
+    return "csv_opt, output, referenceaudio 文件夹已重置。"
+
 def launch_ui():
     create_folders(["input", "referenceaudio", "csv_opt", "output"])
 
     with gr.Blocks(theme=gr.themes.Default(
-            primary_hue="blue",
-            secondary_hue="blue",
-            neutral_hue="blue",
-            text_size="md",
-            spacing_size="md",
-            radius_size="md",
-            font=["sans-serif", "Arial", "Helvetica", "sans-serif"],
+            primary_hue="indigo",
+            secondary_hue="violet",
+            neutral_hue="gray",
+            text_size="lg",
+            spacing_size="lg",
+            radius_size="lg",
+            font=['Inter', 'sans-serif']
         ), title="音频情感识别与分类应用") as demo:
 
         gr.Markdown("# 🎙️ 音频情感识别与分类\n这个应用可以帮助你对音频文件进行情感识别和分类。")
@@ -75,11 +91,15 @@ def launch_ui():
                 one_click_model_revision = gr.Textbox(label="模型版本", value="v2.0.4")
                 one_click_batch_size = gr.Slider(1, 100, 10, step=1, label="批量大小")
                 one_click_max_workers = gr.Slider(1, 16, 4, step=1, label="最大工作线程数")
-            one_click_disable_text_emotion = gr.Checkbox(label="禁用文本情感分类", value=False)
+            one_click_disable_text_emotion = gr.Checkbox(label="禁用文本情感分类(效果不如预期默认禁用)", value=True)
             one_click_disable_filter = gr.Checkbox(label="禁用参考音频筛选", value=False)
-            one_click_button = gr.Button("一键推理")
+
+            with gr.Row():
+                one_click_button = gr.Button("一键推理")
+                one_click_reset_button = gr.Button("一键重置")
             one_click_result = gr.Textbox(label="推理结果")
             one_click_button.click(run_end_to_end_pipeline, [one_click_input_folder, one_click_min_duration, one_click_max_duration, one_click_model_revision, one_click_batch_size, one_click_max_workers, one_click_disable_text_emotion, one_click_disable_filter], one_click_result)
+            one_click_reset_button.click(reset_folders, [], one_click_result)
 
         with gr.Tab("音频预处理"):
             with gr.Row():
@@ -100,7 +120,7 @@ def launch_ui():
             with gr.Row():  
                 batch_size = gr.Slider(1, 100, 10, step=1, label="批量大小")
                 recognize_max_workers = gr.Slider(1, 16, 4, step=1, label="最大工作线程数")
-            disable_text_emotion = gr.Checkbox(label="禁用文本情感分类", value=False)
+            disable_text_emotion = gr.Checkbox(label="禁用文本情感分类(效果不如预期默认禁用)", value=True)
             output_file = gr.Textbox(label="输出文件路径", value="csv_opt/recognition_result.csv")
             recognize_button = gr.Button("开始识别")
             recognize_result = gr.Textbox(label="识别结果")
