@@ -12,7 +12,11 @@ from recognize import main as recognize_main
 from classify import classify_audio_emotion
 import shutil
 
-logging.getLogger("gradio").setLevel(logging.WARNING)
+# 配置logging模块来关闭Gradio的输出
+logging.getLogger("gradio").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("anyio").setLevel(logging.ERROR)
 
 # 全局参数设置
 INPUT_FOLDER = "input"  
@@ -24,7 +28,6 @@ MIN_DURATION = 3
 MAX_DURATION = 10
 DISABLE_TEXT_EMOTION = True
 
-MODEL_REVISION = "v2.0.4"
 BATCH_SIZE = 10
 MAX_WORKERS = 4
 
@@ -49,11 +52,10 @@ def preprocess_and_rename_audio(input_folder, output_folder, min_duration, max_d
 
     return f"{filter_result}\n{rename_result}"
 
-def recognize_audio_emotions(audio_folder, model_revision, batch_size, max_workers, disable_text_emotion, output_file):
+def recognize_audio_emotions(audio_folder, batch_size, max_workers, disable_text_emotion, output_file):
     recognize_args = argparse.Namespace(
         folder_path=audio_folder,
         output_file=output_file,
-        model_revision=model_revision,
         batch_size=batch_size,
         max_workers=max_workers,
         disable_text_emotion=disable_text_emotion
@@ -65,10 +67,10 @@ def classify_audio_emotions(log_file, max_workers, output_folder):
     classify_audio_emotion(log_file, output_folder, max_workers)
     return f"音频情感分类完成,结果保存在 {output_folder} 文件夹中。"
 
-def run_end_to_end_pipeline(input_folder, min_duration, max_duration, model_revision, batch_size, max_workers, disable_text_emotion, disable_filter):
+def run_end_to_end_pipeline(input_folder, min_duration, max_duration, batch_size, max_workers, disable_text_emotion, disable_filter):
     preprocess_result = preprocess_and_rename_audio(input_folder, PREPROCESS_OUTPUT_FOLDER, min_duration, max_duration, disable_filter)
     output_file = os.path.join(CSV_OUTPUT_FOLDER, "recognition_result.csv")
-    recognize_result = recognize_audio_emotions(PREPROCESS_OUTPUT_FOLDER, model_revision, batch_size, max_workers, disable_text_emotion, output_file)
+    recognize_result = recognize_audio_emotions(PREPROCESS_OUTPUT_FOLDER, batch_size, max_workers, disable_text_emotion, output_file)
     classify_result = classify_audio_emotions(output_file, max_workers, CLASSIFY_OUTPUT_FOLDER)
     return f"{preprocess_result}\n{recognize_result}\n{classify_result}"
 
@@ -102,17 +104,16 @@ def launch_ui():
                     one_click_max_duration = gr.Number(value=MAX_DURATION, label="最大时长(秒)")
                     one_click_disable_filter = gr.Checkbox(value=False, label="禁用参考音频筛选")
                 with gr.Column():
-                    one_click_model_revision = gr.Textbox(value=MODEL_REVISION, label="模型版本")
                     one_click_batch_size = gr.Slider(1, 100, value=BATCH_SIZE, step=1, label="批量大小")
                     one_click_max_workers = gr.Slider(1, 16, value=MAX_WORKERS, step=1, label="最大工作线程数") 
-                    one_click_disable_text_emotion = gr.Checkbox(value=DISABLE_TEXT_EMOTION, label="禁用文本情感分类(效果不如预期默认禁用)")
+                    one_click_disable_text_emotion = gr.Checkbox(value=DISABLE_TEXT_EMOTION, label="禁用文本情感分类（效果不如预期，默认禁用）")
 
             with gr.Row():  
                 one_click_button = gr.Button("一键推理", variant="primary")
                 one_click_reset_button = gr.Button("一键重置")
             
             one_click_result = gr.Textbox(label="推理结果", lines=5)
-            one_click_button.click(run_end_to_end_pipeline, [one_click_input_folder, one_click_min_duration, one_click_max_duration, one_click_model_revision, one_click_batch_size, one_click_max_workers, one_click_disable_text_emotion, one_click_disable_filter], one_click_result)
+            one_click_button.click(run_end_to_end_pipeline, [one_click_input_folder, one_click_min_duration, one_click_max_duration, one_click_batch_size, one_click_max_workers, one_click_disable_text_emotion, one_click_disable_filter], one_click_result)
             one_click_reset_button.click(reset_folders, [], one_click_result)
 
         with gr.Tab("音频预处理"):
@@ -136,15 +137,14 @@ def launch_ui():
                 recognize_output_file = gr.Textbox(value=os.path.join(CSV_OUTPUT_FOLDER, "recognition_result.csv"), label="输出文件路径")
 
             with gr.Row():
-                recognize_model_revision = gr.Textbox(value=MODEL_REVISION, label="模型版本") 
                 recognize_batch_size = gr.Slider(1, 100, value=BATCH_SIZE, step=1, label="批量大小")
                 recognize_max_workers = gr.Slider(1, 16, value=MAX_WORKERS, step=1, label="最大工作线程数")
-                recognize_disable_text_emotion = gr.Checkbox(value=DISABLE_TEXT_EMOTION, label="禁用文本情感分类(效果不如预期默认禁用)")
+                recognize_disable_text_emotion = gr.Checkbox(value=DISABLE_TEXT_EMOTION, label="禁用文本情感分类（效果不如预期，默认禁用）")
                 
             recognize_button = gr.Button("开始识别", variant="primary")
             recognize_result = gr.Textbox(label="识别结果", lines=3)
 
-            recognize_button.click(recognize_audio_emotions, [recognize_folder, recognize_model_revision, recognize_batch_size, recognize_max_workers, recognize_disable_text_emotion, recognize_output_file], recognize_result)
+            recognize_button.click(recognize_audio_emotions, [recognize_folder, recognize_batch_size, recognize_max_workers, recognize_disable_text_emotion, recognize_output_file], recognize_result)
 
         with gr.Tab("音频情感分类"):
             with gr.Row():
@@ -158,7 +158,7 @@ def launch_ui():
 
             classify_button.click(classify_audio_emotions, [classify_log_file, classify_max_workers, classify_output], classify_result)
         
-    demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=9975, max_threads=100)
+    demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=9975, max_threads=100, share=False)
 
 if __name__ == "__main__":
     launch_ui()
