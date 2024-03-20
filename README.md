@@ -7,11 +7,6 @@
 ## 依赖项
 
 - Python 3.10
-- pydub
-- modelscope
-- funasr
-- torchaudio
-- Gradio
 - 安装所需依赖`pip install -r requirements.txt`
 ## 快速使用
 
