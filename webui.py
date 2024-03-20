@@ -12,6 +12,8 @@ from recognize import main as recognize_main
 from classify import classify_audio_emotion
 import shutil
 
+logging.getLogger("gradio").setLevel(logging.WARNING)
+
 # 全局参数设置
 INPUT_FOLDER = "input"  
 PREPROCESS_OUTPUT_FOLDER = "referenceaudio"
