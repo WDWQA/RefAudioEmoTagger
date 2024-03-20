@@ -14,9 +14,10 @@ def process_audio_file(audio_file, character, audio_emotion, text_emotion, outpu
         logging.warning(f"Source file does not exist: {src_path}")
         return
     
-    if audio_emotion != text_emotion and audio_emotion != '中立' and text_emotion:
-        logging.info(f"Skipping {src_path} due to emotion mismatch: AudioEmotion={audio_emotion}, TextEmotion={text_emotion}")
-        return
+    if text_emotion is not None:
+        if audio_emotion != text_emotion and audio_emotion != '中立' and text_emotion:
+            logging.info(f"Skipping {src_path} due to emotion mismatch: AudioEmotion={audio_emotion}, TextEmotion={text_emotion}")
+            return
     
     emotion_folder = Path(output_path) / character / audio_emotion
     emotion_folder.mkdir(parents=True, exist_ok=True)
@@ -46,12 +47,19 @@ def classify_audio_emotion(log_file, output_path, max_workers=4):
     
     with open(log_path, 'r', encoding='utf-8') as f_in:
         reader = csv.reader(f_in, delimiter='|')
-        next(reader)  # 跳过标题行
+        header = next(reader)
+        
+        text_emotion_index = None
+        if "TextEmotion" in header:
+            text_emotion_index = header.index("TextEmotion")
         
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
             for row in reader:
-                audio_path, audio_emotion, _, character, text_emotion = row
+                audio_path = row[0]
+                audio_emotion = row[1]
+                character = row[3] if len(row) > 3 else "Unknown"
+                text_emotion = row[text_emotion_index] if text_emotion_index is not None else None
                 future = executor.submit(process_audio_file, audio_path, character, audio_emotion, text_emotion, output_path)
                 futures.append(future)
 
