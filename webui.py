@@ -12,9 +12,6 @@ from recognize import main as recognize_main
 from classify import classify_audio_emotion
 import shutil
 
-# 配置logging模块来过滤掉特定的HTTP请求输出
-logging.getLogger("gradio").setLevel(logging.WARNING)
-
 # 全局参数设置
 INPUT_FOLDER = "input"  
 PREPROCESS_OUTPUT_FOLDER = "referenceaudio"
@@ -106,7 +103,7 @@ def launch_ui():
                     one_click_model_revision = gr.Textbox(value=MODEL_REVISION, label="模型版本")
                     one_click_batch_size = gr.Slider(1, 100, value=BATCH_SIZE, step=1, label="批量大小")
                     one_click_max_workers = gr.Slider(1, 16, value=MAX_WORKERS, step=1, label="最大工作线程数") 
-                    one_click_disable_text_emotion = gr.Checkbox(value=DISABLE_TEXT_EMOTION, label="禁用文本情感分类")
+                    one_click_disable_text_emotion = gr.Checkbox(value=DISABLE_TEXT_EMOTION, label="禁用文本情感分类(效果不如预期默认禁用)")
 
             with gr.Row():  
                 one_click_button = gr.Button("一键推理", variant="primary")
@@ -140,7 +137,7 @@ def launch_ui():
                 recognize_model_revision = gr.Textbox(value=MODEL_REVISION, label="模型版本") 
                 recognize_batch_size = gr.Slider(1, 100, value=BATCH_SIZE, step=1, label="批量大小")
                 recognize_max_workers = gr.Slider(1, 16, value=MAX_WORKERS, step=1, label="最大工作线程数")
-                recognize_disable_text_emotion = gr.Checkbox(value=DISABLE_TEXT_EMOTION, label="禁用文本情感分类")
+                recognize_disable_text_emotion = gr.Checkbox(value=DISABLE_TEXT_EMOTION, label="禁用文本情感分类(效果不如预期默认禁用)")
                 
             recognize_button = gr.Button("开始识别", variant="primary")
             recognize_result = gr.Textbox(label="识别结果", lines=3)
