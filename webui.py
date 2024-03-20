@@ -30,6 +30,7 @@ DISABLE_TEXT_EMOTION = True
 
 BATCH_SIZE = 10
 MAX_WORKERS = 4
+MODEL_REVISION = "v2.0.4"
 
 def create_folders(folders):
     for folder in folders:
@@ -52,13 +53,14 @@ def preprocess_and_rename_audio(input_folder, output_folder, min_duration, max_d
 
     return f"{filter_result}\n{rename_result}"
 
-def recognize_audio_emotions(audio_folder, batch_size, max_workers, disable_text_emotion, output_file):
+def recognize_audio_emotions(audio_folder, batch_size, max_workers, disable_text_emotion, output_file, model_revision=MODEL_REVISION):
     recognize_args = argparse.Namespace(
         folder_path=audio_folder,
         output_file=output_file,
         batch_size=batch_size,
         max_workers=max_workers,
-        disable_text_emotion=disable_text_emotion
+        disable_text_emotion=disable_text_emotion,
+        model_revision=model_revision
     )
     recognize_main(recognize_args)
     return f"音频情感识别完成,结果保存在 {output_file} 文件中。"
@@ -70,7 +72,7 @@ def classify_audio_emotions(log_file, max_workers, output_folder):
 def run_end_to_end_pipeline(input_folder, min_duration, max_duration, batch_size, max_workers, disable_text_emotion, disable_filter):
     preprocess_result = preprocess_and_rename_audio(input_folder, PREPROCESS_OUTPUT_FOLDER, min_duration, max_duration, disable_filter)
     output_file = os.path.join(CSV_OUTPUT_FOLDER, "recognition_result.csv")
-    recognize_result = recognize_audio_emotions(PREPROCESS_OUTPUT_FOLDER, batch_size, max_workers, disable_text_emotion, output_file)
+    recognize_result = recognize_audio_emotions(PREPROCESS_OUTPUT_FOLDER, batch_size, max_workers, disable_text_emotion, output_file, model_revision=MODEL_REVISION)
     classify_result = classify_audio_emotions(output_file, max_workers, CLASSIFY_OUTPUT_FOLDER)
     return f"{preprocess_result}\n{recognize_result}\n{classify_result}"
 
@@ -161,4 +163,4 @@ def launch_ui():
     demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=9975, max_threads=100, share=False)
 
 if __name__ == "__main__":
-    launch_ui()
+    launch_ui() 
