@@ -1,6 +1,6 @@
 # 基于Emotion2Vec模型的批量音频情感自动标注工具
 ## 简介
-基于[emotion2vec](https://www.modelscope.cn/models/iic/emotion2vec_base_finetuned/summary)与[StructBERT](https://www.modelscope.cn/models/iic/nlp_structbert_emotion-classification_chinese-base/summary)对输入的音频进行情绪八分类（生气、厌恶、恐惧、开心、中立、其他、难过、吃惊）
+基于(https://www.modelscope.cn/models/iic/emotion2vec_base_finetuned/summary)与[StructBERT](https://www.modelscope.cn/models/iic/nlp_structbert_emotion-classification_chinese-base/summary)对输入的音频进行情绪八分类（生气、厌恶、恐惧、开心、中立、其他、难过、吃惊）
 
 此项目包含一个音频时长筛选/批量重命名脚本`preprocess_audio.py`批量推理脚本`recognize.py`，和一个音频分类脚本`classify.py`和一个`webui.py`界面
 
@@ -15,6 +15,8 @@
 - 安装所需依赖`pip install pydub modelscope funasr torchaudio Gradio
 
 ## 快速使用
+
+如果您想快速使用可以使用此[打包好的文件](https://www.123pan.com/s/BYgpjv-vdmJv.html)
 
 ```
 input
