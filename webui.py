@@ -93,7 +93,7 @@ def launch_ui():
             font=["Source Sans Pro", "sans-serif"]
         ), title="音频情感识别与分类应用") as demo:
 
-        gr.Markdown("# 🎙️ 音频情感识别与分类\n对音频文件进行情感识别和分类。")
+        gr.Markdown("# RefAudioEmoTagge\n本软件以GPL-3.0协议开源, 作者不对软件具备任何控制力。")
 
         with gr.Tab("一键推理"):
             with gr.Row():
