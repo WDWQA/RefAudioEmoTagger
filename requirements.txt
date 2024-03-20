@@ -2,4 +2,5 @@ pydub
 modelscope
 funasr
 torchaudio
-gradio
+gradio==4.20
+transformer
