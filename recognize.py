@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import time
+from itertools import islice
 from pathlib import Path
 
 import aiofiles
@@ -62,6 +63,7 @@ class EmotionRecognitionPipeline:
         result_str = f"{audio_path}|{top_emotion}|{confidence}|{os.path.basename(os.path.dirname(audio_path))}\n"
         async with aiofiles.open(output_file, 'a', encoding='utf-8') as f:
             await f.write(result_str)
+            await f.flush()
                     
     @staticmethod
     def _get_top_emotion_with_confidence(recognition_result: dict) -> tuple:
@@ -71,7 +73,7 @@ class EmotionRecognitionPipeline:
         return labels[top_index].split('/')[0], scores[top_index]
         
 
-async def process_audio_files(folder_path: str, recognizer: EmotionRecognitionPipeline, output_file: str, num_workers: int = 4, batch_size: int = 100):
+async def process_audio_files(folder_path: str, recognizer: EmotionRecognitionPipeline, output_file: str, num_workers: int = 4, batch_size: int = 10):
     folder_path = Path(folder_path)
     if not folder_path.exists():
         logging.error(f"目录不存在：{folder_path}")
@@ -89,8 +91,10 @@ async def process_audio_files(folder_path: str, recognizer: EmotionRecognitionPi
         await asyncio.gather(*batch_tasks)
     logging.info(f"Processed {len(audio_paths)} files in {folder_path}, total time: {time.time() - start_time:.2f} seconds")
 
+
 def contains_chinese(text: str) -> bool:
     return any('\u4e00' <= char <= '\u9fff' for char in text)
+    
 
 def process_text_emotion(df: pd.DataFrame, text_classifier: pipeline) -> pd.DataFrame:
     emotion_mapping = {
@@ -126,7 +130,7 @@ def process_text_emotion(df: pd.DataFrame, text_classifier: pipeline) -> pd.Data
     return df
 
 
-async def run_recognition(audio_folder: str, output_file: str, model_revision: str, num_workers: int, disable_text_emotion: bool, batch_size: int = 100):
+async def run_recognition(audio_folder: str, output_file: str, model_revision: str, num_workers: int, disable_text_emotion: bool, batch_size: int = 10):
     emotion_recognizer = EmotionRecognitionPipeline(model_revision=model_revision)
     output_file = Path(output_file)
     
@@ -156,7 +160,8 @@ if __name__ == "__main__":
     parser.add_argument('--output_file', type=str, required=True, help='输出文件的路径')
     parser.add_argument('--model_revision', type=str, default="v2.0.4", help='情感识别模型的修订版本')
     parser.add_argument('--num_workers', type=int, default=4, help='数据加载的工作进程数')
+    parser.add_argument('--batch_size', type=int, default=10, help='批量处理的大小')
     parser.add_argument('--disable_text_emotion', action='store_true', help='是否禁用文本情感分类')
     args = parser.parse_args()
 
-    asyncio.run(run_recognition(args.folder_path, args.output_file, args.model_revision, args.num_workers, args.disable_text_emotion))
+    asyncio.run(run_recognition(args.folder_path, args.output_file, args.model_revision, args.num_workers, args.disable_text_emotion, args.batch_size))
