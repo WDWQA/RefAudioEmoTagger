@@ -9,7 +9,7 @@ current_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(current_dir))
 
 from preprocess_audio import filter_audio, rename_wav_with_txt
-from recognize import run_recognition
+from recognize import run_recognition as run_recognition_func
 from classify import classify_audio_emotion
 import shutil
 
@@ -58,7 +58,7 @@ async def recognize_audio_emotions(audio_folder, num_workers, disable_text_emoti
     output_file = Path(output_file)
     output_file.parent.mkdir(parents=True, exist_ok=True)
     
-    await run_recognition(audio_folder, str(output_file), model_revision, num_workers, disable_text_emotion)
+    await run_recognition_func(audio_folder, str(output_file), model_revision, num_workers, disable_text_emotion)
     
     return f"音频情感识别完成,结果保存在 {output_file} 文件中。"
 
