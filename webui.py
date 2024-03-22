@@ -3,12 +3,13 @@ import argparse
 import logging
 import gradio as gr
 import sys
+from pathlib import Path
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, current_dir)
+current_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(current_dir))
 
 from preprocess_audio import filter_audio, rename_wav_with_txt
-from recognize import main as recognize_main
+from recognize import run_recognition
 from classify import classify_audio_emotion
 import shutil
 
@@ -28,16 +29,16 @@ MIN_DURATION = 3
 MAX_DURATION = 10
 DISABLE_TEXT_EMOTION = True
 
-BATCH_SIZE = 10
-MAX_WORKERS = 4
+NUM_WORKERS = 4
 MODEL_REVISION = "v2.0.4"
 
 def create_folders(folders):
     for folder in folders:
-        os.makedirs(folder, exist_ok=True)
+        Path(folder).mkdir(parents=True, exist_ok=True)
 
 def preprocess_and_rename_audio(input_folder, output_folder, min_duration, max_duration, disable_filter):
-    src_items = len(os.listdir(input_folder))
+    input_folder = Path(input_folder)
+    src_items = len(list(input_folder.glob('*')))
     copy_parent_folder = src_items > 5
 
     if disable_filter:
@@ -46,41 +47,44 @@ def preprocess_and_rename_audio(input_folder, output_folder, min_duration, max_d
     else:
         filter_audio(input_folder, output_folder, min_duration, max_duration, copy_parent_folder=copy_parent_folder)
         filter_result = f"音频过滤完成,结果保存在 {output_folder} 文件夹中。"
-        audio_folder = output_folder
+        audio_folder = Path(output_folder)
 
     renamed_files = rename_wav_with_txt(audio_folder)
     rename_result = f"音频重命名完成,共重命名 {renamed_files} 个文件。"
 
     return f"{filter_result}\n{rename_result}"
 
-def recognize_audio_emotions(audio_folder, batch_size, max_workers, disable_text_emotion, output_file, model_revision=MODEL_REVISION):
-    recognize_args = argparse.Namespace(
-        folder_path=audio_folder,
-        output_file=output_file,
-        batch_size=batch_size,
-        max_workers=max_workers,
-        disable_text_emotion=disable_text_emotion,
-        model_revision=model_revision
-    )
-    recognize_main(recognize_args)
+async def recognize_audio_emotions(audio_folder, num_workers, disable_text_emotion, output_file, model_revision=MODEL_REVISION):
+    output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    await run_recognition(audio_folder, str(output_file), model_revision, num_workers, disable_text_emotion)
+    
     return f"音频情感识别完成,结果保存在 {output_file} 文件中。"
 
-def classify_audio_emotions(log_file, max_workers, output_folder):
-    classify_audio_emotion(log_file, output_folder, max_workers)
+async def classify_audio_emotions(log_file, num_workers, output_folder):
+    log_file = Path(log_file)
+    if not log_file.exists():
+        return f"日志文件 {log_file} 不存在,无法进行音频情感分类。"
+    
+    classify_audio_emotion(str(log_file), output_folder, num_workers)
     return f"音频情感分类完成,结果保存在 {output_folder} 文件夹中。"
 
-def run_end_to_end_pipeline(input_folder, min_duration, max_duration, batch_size, max_workers, disable_text_emotion, disable_filter):
-    preprocess_result = preprocess_and_rename_audio(input_folder, PREPROCESS_OUTPUT_FOLDER, min_duration, max_duration, disable_filter)
-    output_file = os.path.join(CSV_OUTPUT_FOLDER, "recognition_result.csv")
-    recognize_result = recognize_audio_emotions(PREPROCESS_OUTPUT_FOLDER, batch_size, max_workers, disable_text_emotion, output_file, model_revision=MODEL_REVISION)
-    classify_result = classify_audio_emotions(output_file, max_workers, CLASSIFY_OUTPUT_FOLDER)
+async def run_end_to_end_pipeline(input_folder, min_duration, max_duration, num_workers, disable_text_emotion, disable_filter):
+    preprocess_output_folder = PREPROCESS_OUTPUT_FOLDER if not disable_filter else input_folder
+    preprocess_result = preprocess_and_rename_audio(input_folder, preprocess_output_folder, min_duration, max_duration, disable_filter)
+    
+    output_file = Path(CSV_OUTPUT_FOLDER) / "recognition_result.csv"
+    recognize_result = await recognize_audio_emotions(preprocess_output_folder, num_workers, disable_text_emotion, str(output_file), model_revision=MODEL_REVISION)
+    
+    classify_result = await classify_audio_emotions(str(output_file), num_workers, CLASSIFY_OUTPUT_FOLDER)
     return f"{preprocess_result}\n{recognize_result}\n{classify_result}"
 
 def reset_folders():
     folders = [CSV_OUTPUT_FOLDER, CLASSIFY_OUTPUT_FOLDER, PREPROCESS_OUTPUT_FOLDER]
     for folder in folders:
         shutil.rmtree(folder, ignore_errors=True)
-        os.makedirs(folder)
+        Path(folder).mkdir(exist_ok=True)
     return f"{', '.join(folders)} 文件夹已重置。"
 
 def launch_ui():
@@ -106,8 +110,7 @@ def launch_ui():
                     one_click_max_duration = gr.Number(value=MAX_DURATION, label="最大时长(秒)")
                     one_click_disable_filter = gr.Checkbox(value=False, label="禁用参考音频筛选")
                 with gr.Column():
-                    one_click_batch_size = gr.Slider(1, 100, value=BATCH_SIZE, step=1, label="批量大小")
-                    one_click_max_workers = gr.Slider(1, 16, value=MAX_WORKERS, step=1, label="最大工作线程数") 
+                    one_click_num_workers = gr.Slider(1, 16, value=NUM_WORKERS, step=1, label="最大工作线程数") 
                     one_click_disable_text_emotion = gr.Checkbox(value=DISABLE_TEXT_EMOTION, label="禁用文本情感分类（效果不如预期，默认禁用）")
 
             with gr.Row():  
@@ -115,7 +118,7 @@ def launch_ui():
                 one_click_reset_button = gr.Button("一键重置")
             
             one_click_result = gr.Textbox(label="推理结果", lines=5)
-            one_click_button.click(run_end_to_end_pipeline, [one_click_input_folder, one_click_min_duration, one_click_max_duration, one_click_batch_size, one_click_max_workers, one_click_disable_text_emotion, one_click_disable_filter], one_click_result)
+            one_click_button.click(run_end_to_end_pipeline, [one_click_input_folder, one_click_min_duration, one_click_max_duration, one_click_num_workers, one_click_disable_text_emotion, one_click_disable_filter], one_click_result)
             one_click_reset_button.click(reset_folders, [], one_click_result)
 
         with gr.Tab("音频预处理"):
@@ -136,31 +139,30 @@ def launch_ui():
         with gr.Tab("音频情感识别"):    
             with gr.Row():
                 recognize_folder = gr.Textbox(value=PREPROCESS_OUTPUT_FOLDER, label="音频文件夹")
-                recognize_output_file = gr.Textbox(value=os.path.join(CSV_OUTPUT_FOLDER, "recognition_result.csv"), label="输出文件路径")
+                recognize_output_file = gr.Textbox(value=str(Path(CSV_OUTPUT_FOLDER) / "recognition_result.csv"), label="输出文件路径")
 
             with gr.Row():
-                recognize_batch_size = gr.Slider(1, 100, value=BATCH_SIZE, step=1, label="批量大小")
-                recognize_max_workers = gr.Slider(1, 16, value=MAX_WORKERS, step=1, label="最大工作线程数")
+                recognize_num_workers = gr.Slider(1, 16, value=NUM_WORKERS, step=1, label="最大工作线程数")
                 recognize_disable_text_emotion = gr.Checkbox(value=DISABLE_TEXT_EMOTION, label="禁用文本情感分类（效果不如预期，默认禁用）")
                 
             recognize_button = gr.Button("开始识别", variant="primary")
             recognize_result = gr.Textbox(label="识别结果", lines=3)
 
-            recognize_button.click(recognize_audio_emotions, [recognize_folder, recognize_batch_size, recognize_max_workers, recognize_disable_text_emotion, recognize_output_file], recognize_result)
+            recognize_button.click(recognize_audio_emotions, [recognize_folder, recognize_num_workers, recognize_disable_text_emotion, recognize_output_file], recognize_result)
 
         with gr.Tab("音频情感分类"):
             with gr.Row():
-                classify_log_file = gr.Textbox(value=os.path.join(CSV_OUTPUT_FOLDER, "recognition_result.csv"), label="日志文件")
+                classify_log_file = gr.Textbox(value=str(Path(CSV_OUTPUT_FOLDER) / "recognition_result.csv"), label="日志文件")
                 classify_output = gr.Textbox(value=CLASSIFY_OUTPUT_FOLDER, label="输出文件夹")
 
-            classify_max_workers = gr.Slider(1, 16, value=MAX_WORKERS, step=1, label="最大工作线程数")
+            classify_num_workers = gr.Slider(1, 16, value=NUM_WORKERS, step=1, label="最大工作线程数")
 
             classify_button = gr.Button("开始分类", variant="primary")  
             classify_result = gr.Textbox(label="分类结果", lines=3)
 
-            classify_button.click(classify_audio_emotions, [classify_log_file, classify_max_workers, classify_output], classify_result)
+            classify_button.click(classify_audio_emotions, [classify_log_file, classify_num_workers, classify_output], classify_result)
         
     demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=9975, max_threads=100, share=False)
 
 if __name__ == "__main__":
-    launch_ui() 
+    launch_ui()
