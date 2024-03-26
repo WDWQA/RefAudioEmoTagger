@@ -10,6 +10,7 @@ import glob
 import pandas as pd
 import torch
 import asyncio
+import gc
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -41,38 +42,43 @@ class EmotionRecognitionPipeline:
             waveform = resampler(waveform.to(self.device))
         return waveform
 
-
 def get_top_emotion_with_confidence(recognition_results):
     return [(result['labels'][result['scores'].index(max(result['scores']))].split('/')[0], max(result['scores'])) for result in recognition_results]
-
 
 async def process_batch(batch_audio_paths, recognizer):
     top_emotions_with_confidence = get_top_emotion_with_confidence(await recognizer.batch_infer(batch_audio_paths))
     return [(audio_path, *top_emotion_confidence) for audio_path, top_emotion_confidence in zip(batch_audio_paths, top_emotions_with_confidence)]
 
+def audio_path_generator(folder_path):
+    audio_paths = glob.glob(os.path.join(folder_path, '**', '*.wav'), recursive=True)
+    for audio_path in audio_paths:
+        yield audio_path
 
 async def process_audio_files(folder_path, recognizer, batch_size=64, max_workers=4):
     if not os.path.exists(folder_path):
         logging.error(f"目录不存在：{folder_path}")
         return None
 
-    audio_paths = glob.glob(os.path.join(folder_path, '**', '*.wav'), recursive=True)
-    batches = [audio_paths[i:i + batch_size] for i in range(0, len(audio_paths), batch_size)]
-
     results = []
     start_time = time.time()
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(process_batch, batch, recognizer) for batch in batches]
-        for future in as_completed(futures):
-            results.extend(await future.result())
+        batch = []
+        for audio_path in audio_path_generator(folder_path):
+            batch.append(audio_path)
+            if len(batch) == batch_size:
+                results.extend(await process_batch(batch, recognizer))
+                batch = []
+                gc.collect()  # 主动调用垃圾回收
 
-    logging.info(f"Processed {len(audio_paths)} files in {folder_path}, total time: {time.time() - start_time:.2f} seconds")
+        if batch:
+            results.extend(await process_batch(batch, recognizer))
+
+    logging.info(f"Processed files in {folder_path}, total time: {time.time() - start_time:.2f} seconds")
     return results
-
 
 def contains_chinese(text):
     return any('\u4e00' <= char <= '\u9fff' for char in text)
-
 
 def process_text_emotion(df, text_classifier):
     emotion_mapping = {
@@ -107,7 +113,6 @@ def process_text_emotion(df, text_classifier):
     df['TextEmotion'] = mapped_emotions
     return df
 
-
 async def main(args):
     emotion_recognizer = EmotionRecognitionPipeline(model_revision=args.model_revision)
     audio_emotion_results = await process_audio_files(args.folder_path, emotion_recognizer, args.batch_size, args.max_workers)
@@ -125,7 +130,6 @@ async def main(args):
     output_file = args.output_file
     df.to_csv(output_file, sep='|', index=False, encoding='utf-8')
     logging.info(f"Results saved to {output_file}")
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='识别音频文件中的情感')

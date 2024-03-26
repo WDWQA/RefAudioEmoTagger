@@ -86,4 +86,4 @@ if __name__ == "__main__":
         filter_audio(args.src_folder, args.dst_folder, args.min_duration, args.max_duration, copy_parent_folder=copy_parent_folder)
 
     target_folder = args.src_folder if args.disable_filter else args.dst_folder        
-    renamed_count = rename_wav_with_txt(target_folder) 
+    renamed_count = rename_wav_with_txt(target_folder)

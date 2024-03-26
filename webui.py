@@ -29,7 +29,7 @@ MIN_DURATION = 3
 MAX_DURATION = 10
 DISABLE_TEXT_EMOTION = True
 
-BATCH_SIZE = 10
+BATCH_SIZE = 64
 MAX_WORKERS = 4
 MODEL_REVISION = "v2.0.4"
 
@@ -52,7 +52,7 @@ async def preprocess_and_rename_audio(input_folder, output_folder, min_duration,
     renamed_files = rename_wav_with_txt(audio_folder)
     rename_result = f"音频重命名完成,共重命名 {renamed_files} 个文件。"
 
-    return f"{filter_result}\n{rename_result}"
+    return f"{filter_result}\n{rename_result}", audio_folder
 
 async def recognize_audio_emotions(audio_folder, batch_size, max_workers, disable_text_emotion, output_file, model_revision=MODEL_REVISION):
     recognize_args = argparse.Namespace(
@@ -71,9 +71,9 @@ async def classify_audio_emotions(log_file, max_workers, output_folder):
     return f"音频情感分类完成,结果保存在 {output_folder} 文件夹中。"
 
 async def run_end_to_end_pipeline(input_folder, min_duration, max_duration, batch_size, max_workers, disable_text_emotion, disable_filter):
-    preprocess_result = await preprocess_and_rename_audio(input_folder, PREPROCESS_OUTPUT_FOLDER, min_duration, max_duration, disable_filter)
+    preprocess_result, audio_folder = await preprocess_and_rename_audio(input_folder, PREPROCESS_OUTPUT_FOLDER, min_duration, max_duration, disable_filter)
     output_file = os.path.join(CSV_OUTPUT_FOLDER, "recognition_result.csv")
-    recognize_result = await recognize_audio_emotions(PREPROCESS_OUTPUT_FOLDER, batch_size, max_workers, disable_text_emotion, output_file, model_revision=MODEL_REVISION)
+    recognize_result = await recognize_audio_emotions(audio_folder, batch_size, max_workers, disable_text_emotion, output_file, model_revision=MODEL_REVISION)
     classify_result = await classify_audio_emotions(output_file, max_workers, CLASSIFY_OUTPUT_FOLDER)
     return f"{preprocess_result}\n{recognize_result}\n{classify_result}"
 
@@ -97,7 +97,7 @@ async def launch_ui():
             font=["Source Sans Pro", "sans-serif"]
         ), title="音频情感识别与分类应用") as demo:
 
-        gr.Markdown("# RefAudioEmoTagge\n本软件以GPL-3.0协议开源, 作者不对软件具备任何控制力。")
+        gr.Markdown("# RefAudioEmoTagger\n本软件以GPL-3.0协议开源, 作者不对软件具备任何控制力。")
 
         with gr.Tab("一键推理"):
             with gr.Row():
@@ -117,8 +117,8 @@ async def launch_ui():
             
             one_click_result = gr.Textbox(label="推理结果", lines=5)
 
-            async def run_pipeline(one_click_args):
-                return await run_end_to_end_pipeline(*one_click_args)
+            async def run_pipeline(input_folder, min_duration, max_duration, batch_size, max_workers, disable_text_emotion, disable_filter):
+                return await run_end_to_end_pipeline(input_folder, min_duration, max_duration, batch_size, max_workers, disable_text_emotion, disable_filter)
 
             one_click_button.click(run_pipeline, inputs=[one_click_input_folder, one_click_min_duration, one_click_max_duration, one_click_batch_size, one_click_max_workers, one_click_disable_text_emotion, one_click_disable_filter], outputs=one_click_result)
             one_click_reset_button.click(reset_folders, [], one_click_result)
