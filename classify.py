@@ -7,7 +7,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def process_audio_file(audio_file, character, audio_emotion, text_emotion, output_path):
+
+async def process_audio_file(audio_file, character, audio_emotion, text_emotion, output_path):
     src_path = Path(audio_file)
     
     if not src_path.exists():
@@ -35,7 +36,8 @@ def process_audio_file(audio_file, character, audio_emotion, text_emotion, outpu
     else:
         logging.warning(f"File already exists: {dst_path}")
 
-def classify_audio_emotion(log_file, output_path, max_workers=4):
+
+async def classify_audio_emotion(log_file, output_path, max_workers=4):
     log_path = Path(log_file)
     
     if not log_path.exists():
@@ -68,8 +70,10 @@ def classify_audio_emotion(log_file, output_path, max_workers=4):
                 if exception:
                     logging.error(f"Exception occurred: {exception}")
 
+
 if __name__ == "__main__":
     import argparse
+    import asyncio
 
     parser = argparse.ArgumentParser(description='Classify audio files by emotion')
     parser.add_argument('--log_file', type=str, required=True, help='Path to the log file')
@@ -78,4 +82,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    classify_audio_emotion(args.log_file, args.output_path, args.max_workers)
+    asyncio.run(classify_audio_emotion(args.log_file, args.output_path, args.max_workers))
