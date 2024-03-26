@@ -15,7 +15,7 @@ import gc
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class EmotionRecognitionPipeline:
-    def __init__(self, model_path="iic/emotion2vec_base_finetuned", model_revision="v2.0.4", device='cuda:0', target_sample_rate=16000):
+    def __init__(self, model_path="model/emotion2vec", model_revision="v2.0.4", device='cuda:0', target_sample_rate=16000):
         self.device = device
         self.target_sample_rate = target_sample_rate
         self.pipeline = pipeline(
@@ -124,7 +124,7 @@ async def main(args):
     df['ParentFolder'] = df['AudioPath'].apply(lambda x: os.path.basename(os.path.dirname(x)))
 
     if not args.disable_text_emotion:
-        text_classifier = pipeline(Tasks.text_classification, 'damo/nlp_structbert_emotion-classification_chinese-base', model_revision='v1.0.0')
+        text_classifier = pipeline(Tasks.text_classification, 'model/structbert_emotion', model_revision='v1.0.0')
         df = process_text_emotion(df, text_classifier)
 
     output_file = args.output_file

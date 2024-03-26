@@ -2,7 +2,6 @@ import os
 import logging
 import argparse
 from pydub import AudioSegment
-from shutil import copy2, copytree
 import glob
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -13,8 +12,9 @@ def filter_audio(src_folder, dst_folder=None, min_duration=3, max_duration=10, d
         return
 
     audio_files = glob.glob(os.path.join(src_folder, "**", "*.wav"), recursive=True)
+    total_files = len(audio_files)
     
-    for src_path in audio_files:
+    for index, src_path in enumerate(audio_files, start=1):
         if disable_filter:
             dst_path = src_path
         else:
@@ -32,18 +32,20 @@ def filter_audio(src_folder, dst_folder=None, min_duration=3, max_duration=10, d
 
             duration = AudioSegment.from_wav(src_path).duration_seconds  
             if min_duration <= duration <= max_duration:
-                copy2(src_path, dst_path)
-                logging.info(f"已复制 {src_path} 到 {dst_path}")
+                AudioSegment.from_wav(src_path).export(dst_path, format="wav")
+                logging.info(f"[{index}/{total_files}] 已复制 {src_path} 到 {dst_path}")
             else:
-                logging.warning(f"已跳过 {src_path} (时长: {duration:.2f}秒)")
+                logging.warning(f"[{index}/{total_files}] 已跳过 {src_path} (时长: {duration:.2f}秒)")
 
     if not disable_filter:
         logging.info(f"过滤后的音频已保存在 {dst_folder}")
 
 def rename_wav_with_txt(directory):
     renamed_count = 0
+    txt_files = glob.glob(os.path.join(directory, "**", "*.lab"), recursive=True)
+    total_files = len(txt_files)
     
-    for txt_file in glob.glob(os.path.join(directory, "**", "*.lab"), recursive=True):
+    for index, txt_file in enumerate(txt_files, start=1):
         wav_file = os.path.splitext(txt_file)[0] + ".wav"
 
         if os.path.exists(wav_file):
@@ -56,11 +58,17 @@ def rename_wav_with_txt(directory):
                 try:
                     os.rename(wav_file, new_wav_file)
                     renamed_count += 1
-                    logging.info(f"已重命名 {wav_file} 为 {new_wav_file}")
+                    logging.info(f"[{index}/{total_files}] 已重命名 {wav_file} 为 {new_wav_file}")
                 except OSError as e:
-                    logging.error(f"重命名 {wav_file} 时出错: {e}")
+                    logging.error(f"[{index}/{total_files}] 重命名 {wav_file} 时出错: {e}")
+            
+            try:
+                os.remove(txt_file)
+                logging.info(f"[{index}/{total_files}] 已删除 {txt_file}")
+            except OSError as e:
+                logging.error(f"[{index}/{total_files}] 删除 {txt_file} 时出错: {e}")
         else:
-            logging.warning(f"找不到与 {txt_file} 对应的WAV文件")
+            logging.warning(f"[{index}/{total_files}] 找不到与 {txt_file} 对应的WAV文件")
 
     logging.info(f"共重命名了 {renamed_count} 个文件")
             
@@ -68,10 +76,10 @@ def rename_wav_with_txt(directory):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='筛选并重命名音频文件')
-    parser.add_argument('src_folder', help='源文件夹路径')
+    parser.add_argument('src_folder', help='源文件夹路径')  
     parser.add_argument('-dst', '--dst_folder', help='目标文件夹路径')
     parser.add_argument('-min', '--min_duration', type=float, default=3, help='最小时长(秒),默认为3秒')
-    parser.add_argument('-max', '--max_duration', type=float, default=10, help='最大时长(秒),默认为10秒')
+    parser.add_argument('-max', '--max_duration', type=float, default=10, help='最大时长(秒),默认为10秒') 
     parser.add_argument('-d', '--disable_filter', action='store_true', help='禁用音频筛选')
 
     args = parser.parse_args()
@@ -82,7 +90,7 @@ if __name__ == "__main__":
     if args.disable_filter:
         filter_audio(args.src_folder, disable_filter=True, copy_parent_folder=copy_parent_folder)
     else:
-        os.makedirs(args.dst_folder, exist_ok=True)
+        os.makedirs(args.dst_folder, exist_ok=True)  
         filter_audio(args.src_folder, args.dst_folder, args.min_duration, args.max_duration, copy_parent_folder=copy_parent_folder)
 
     target_folder = args.src_folder if args.disable_filter else args.dst_folder        
