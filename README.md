@@ -10,7 +10,7 @@
 - 安装所需依赖`pip install -r requirements.txt`
 ## 快速使用
 
-如果您想快速使用可以使用此[打包好的文件](https://www.123pan.com/s/BYgpjv-pdmJv.html)
+如果您想快速使用可以使用此[打包好的文件](https://www.123pan.com/s/BYgpjv-I9mJv.html)
 
 ```
 input
