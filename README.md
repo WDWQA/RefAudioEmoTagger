@@ -12,6 +12,7 @@
 
 如果您想快速使用可以使用此[打包好的文件](https://www.123pan.com/s/BYgpjv-I9mJv.html)
 
+输入输出可以参考此格式：
 ```
 input
 └───speaker
