@@ -2,7 +2,7 @@
 ## 简介
 基于[emotion2vec](https://www.modelscope.cn/models/iic/emotion2vec_base_finetuned/summary)与[StructBERT](https://www.modelscope.cn/models/iic/nlp_structbert_emotion-classification_chinese-base/summary)对输入的音频进行情绪八分类（生气、厌恶、恐惧、开心、中立、其他、难过、吃惊）
 
-此项目包含一个音频时长筛选/批量重命名脚本`preprocess_audio.py`,批量推理脚本`recognize.py`,和一个音频分类脚本`classify.py`,和一个`webui.py`界面
+此项目包含一个音频时长筛选/批量重命名脚本preprocess_audio.py批量推理脚本recognize.py和一个音频分类脚本classify.py和一个webui.py界面
 
 ## 依赖项
 
