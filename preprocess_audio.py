@@ -40,7 +40,7 @@ def filter_audio(src_folder, dst_folder=None, min_duration=3, max_duration=10, d
     if not disable_filter:
         logging.info(f"过滤后的音频已保存在 {dst_folder}")
 
-def rename_wav_with_txt(directory):
+def rename_wav_with_lab(directory):
     renamed_count = 0
     txt_files = glob.glob(os.path.join(directory, "**", "*.lab"), recursive=True)
     total_files = len(txt_files)
@@ -74,6 +74,41 @@ def rename_wav_with_txt(directory):
             
     return renamed_count
 
+def rename_wav_with_list(list_file, wav_folder):
+    renamed_count = 0
+    
+    with open(list_file, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        total_files = len(lines)
+        
+        for index, line in enumerate(lines, start=1):
+            parts = line.strip().split('|')
+            if len(parts) >= 4:
+                wav_name = os.path.basename(parts[0])
+                new_name = parts[-1]
+
+                wav_files = glob.glob(os.path.join(wav_folder, "**", wav_name), recursive=True)
+
+                if wav_files:
+                    wav_file = wav_files[0]
+                    new_name = new_name.replace('/', '_').replace('\\', '_')  # 替换文件名中的特殊字符
+                    new_wav_file = os.path.join(os.path.dirname(wav_file), f"{new_name}.wav")
+                    
+                    if new_wav_file != wav_file:
+                        try:
+                            os.rename(wav_file, new_wav_file)
+                            renamed_count += 1
+                            logging.info(f"[{index}/{total_files}] 已重命名 {wav_file} 为 {new_wav_file}")
+                        except OSError as e:
+                            logging.error(f"[{index}/{total_files}] 重命名 {wav_file} 时出错: {e}")
+                else:
+                    logging.warning(f"[{index}/{total_files}] 找不到音频文件 {wav_name}")
+            else:
+                logging.warning(f"[{index}/{total_files}] 格式错误: {line}")
+
+    logging.info(f"共重命名了 {renamed_count} 个文件")
+    return renamed_count
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='筛选并重命名音频文件')
     parser.add_argument('src_folder', help='源文件夹路径')  
@@ -94,4 +129,4 @@ if __name__ == "__main__":
         filter_audio(args.src_folder, args.dst_folder, args.min_duration, args.max_duration, copy_parent_folder=copy_parent_folder)
 
     target_folder = args.src_folder if args.disable_filter else args.dst_folder        
-    renamed_count = rename_wav_with_txt(target_folder)
+    renamed_count = rename_wav_with_lab(target_folder)
