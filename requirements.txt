@@ -3,4 +3,4 @@ modelscope
 funasr
 torchaudio
 gradio==4.20
-transformer
+transformers
